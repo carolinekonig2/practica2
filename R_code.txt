@@ -1,0 +1,159 @@
+dataset <-read.table("C:\\uoc\\TipoCicloDatos\\practica2\\dataset\\arrythmia\\arrhythmia.txt", header=FALSE, sep=",")
+dim(dataset)
+
+
+
+summary(dataset[1:15])
+  
+ 
+#test for empty values?
+for (c in 1:15 ) {
+which(is.na(dataset[c]))
+}
+
+#valores vacios estan indicados con ?
+for (c in 1:15 ) {
+which(dataset[c]=='?')
+}
+
+#Busqueda por valores extremos
+#altura mayor a 220 cm
+which(dataset[3] >220)
+#peso igual a 6 kg
+which(dataset[4]==6)
+
+#visualizacion de registros con valores raros
+ dataset[142,1:4]
+ 
+#correcion de registros con datos de altura erroneas
+dataset[317,3]=61
+dataset[412,3]=78
+
+
+ 
+
+
+atr<-c("Edad","Sexo","altura","peso")
+atr2<-c("QRS","PR","QT","T","P")
+atr3<-c("QRS","T","P","QRST")
+atr4<-c("Frequ. card")
+#boxplot de los diferentes atributos, ejemplo para atributo 1-4
+par(mfrow=c(1,4))
+ for(i in 1:4) {
+     boxplot(x[,i], main=atr[i])
+ }
+ 
+ #correcion de valores con ? a 0 y transformacion del tipo de dato a numerico 
+ p=dataset[,13]
+ p=as.numeric(as.character(dataset[,13]))
+ p[which(is.na(p))]<-0
+ dataset[,13]=p 
+ 
+ #creacion del nuevo dataset de solo 16 atributos
+ m <- matrix(0, ncol = 16, nrow = 452)
+ 
+#Transformacion de los valores de la variable diagnostico a tres valores posibles:(1,2,-1)
+y=dataset[,280]
+y[y==16]<- -1
+y[y>1]<-2
+
+# calculo del mass body index 
+mbi=dataset[,3]/((dataset[,4]/10)*(dataset[,4]/10))
+ 
+ 
+#Asignacion de los valores de los atributos a la matriz
+m[,1]=dataset[,1]
+m[,2]=dataset[,2]
+m[,3]=dataset[,3]
+m[,4]=dataset[,4]
+m[,5]=mbi
+m[,6]=dataset[,5]
+m[,7]=dataset[,6]
+m[,8]=dataset[,7]
+m[,9]=dataset[,8]
+m[,10]=dataset[,9]
+m[,11]=dataset[,10]
+m[,12]=dataset[,11]
+m[,13]=dataset[,12]
+m[,14]=dataset[,13]
+m[,15]=dataset[,15]
+m[,16]=y
+
+
+#estandardizacion de los valores 
+m2 <- matrix(0, ncol = 16, nrow = 452)
+#Estandardización de los valores:
+m2[,1]=scale(m[,1]) 
+for (3 in 1:15 ) {
+m2[,i]=scale(m[,i])
+}
+
+#guardar en dataframe
+md <- data.frame(m)
+md2 <- data.frame(m2)
+
+#plot de la distribucion de X5 por grupo (X16)
+ggplot(data = md) + 
+  geom_point(mapping = aes(x = X5, y = X16,color = X16))
+  
+#plot de la distribucion de la variable X16  
+ggplot(md2, aes(x=X16)) + geom_bar() + labs(title="Arrithmia class assignment")  
+  
+  
+#seleccion de indices de registros por grupo de diagnostico
+c1=which (m[,16]==1)
+c2=which (m[,16]==2
+
+#shapiro test para normalidad
+shapiro.test(m2[c1,])
+shapiro.test(m2[c2,])
+
+#fisher test
+ var.test(m[c1,], m[c2,])
+
+#t-test
+for (i in 1:15 ) {
+t.test(m2[c1,i], m2[c2,i]) 
+}
+# Kolmogorov-smirov test 
+ks.test(m2[c1,i], m2[c2,i])
+
+#Wilcox ranking test
+wilcox.test(m2[c1,i], m2[c2,i])
+
+#boxplot de la variable X6 y x9 segun grupo (X16)
+	
+	boxplot(X6~X16,data=md, main="Arritmia data set", 
+         xlab="Class ", ylab="QRS duration in msec")
+	
+	boxplot(X9~X16,data=md, main="Arritmia data set", xlab="Class ", ylab="P interval in msec")
+	
+	
+	library(lattice)
+#scatter plot de las variable X6 y X9
+	splom(md2[c(6,9)], groups=md$X16, data=md2)
+	
+	
+	
+	
+# seleccion de atributos con el algoritmo MARS
+library(earth)
+marsModel <- earth(X16 ~ ., data=md) 
+ev <- evimp (marsModel)
+print(ev)
+
+
+#seleccion de atributos con random forest 
+library(party)
+cf1 <- cforest(X16 ~ . , data= md, control=cforest_unbiased(mtry=2,ntree=50)) # fit the random forest
+varimp(cf1) 
+varimpAUC(cf1)
+
+#seleccion de atributos mediante el metodo wrapper Boruta
+library(Boruta)
+boruta_output <- Boruta(X16 ~ ., data=na.md, doTrace=2)
+boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])  # collect Confirmed and Tentative variables
+print(boruta_signif) 
+plot(boruta_output, cex.axis=.7, las=2, xlab="", main="Variable Importance") 
+
+
